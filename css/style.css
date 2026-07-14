@@ -1,0 +1,251 @@
+/* ==========================================================================
+   STUDENT MANAGEMENT SYSTEM - GLOBAL STYLESHEET (style.css)
+   ========================================================================== */
+
+/* --- Import Inter Font from Google Fonts --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* --- Root Theme Design Tokens (Custom Properties) --- */
+:root {
+    /* Color Palette (HSL for consistency and smooth adjustments) */
+    --primary: hsl(221, 83%, 53%);        /* Deep Indigo Blue #3b82f6 */
+    --primary-hover: hsl(221, 83%, 45%);  /* Darker Indigo for Hover */
+    --primary-light: hsl(221, 83%, 95%);  /* Soft Blue Tint */
+    
+    --success: hsl(142, 71%, 45%);        /* Emerald Green */
+    --success-light: hsl(142, 71%, 95%);  /* Green Tint */
+    
+    --danger: hsl(350, 89%, 60%);         /* Crimson Red */
+    --danger-light: hsl(350, 89%, 96%);   /* Red Tint */
+    
+    --warning: hsl(38, 92%, 50%);         /* Amber Amber */
+    
+    /* Neutral Colors */
+    --bg-color: hsl(210, 40%, 98%);       /* Very Light Slate Gray */
+    --surface-color: hsl(0, 0%, 100%);    /* Solid White */
+    --border-color: hsl(214, 32%, 91%);   /* Light Grey Border */
+    --border-focus: hsl(221, 83%, 75%);   /* Soft Blue Glow Border */
+    
+    /* Text Colors */
+    --text-main: hsl(215, 47%, 15%);      /* Dark Slate */
+    --text-muted: hsl(215, 16%, 47%);     /* Muted Slate Gray */
+    --text-light: hsl(0, 0%, 100%);       /* White Text */
+    
+    /* Layout Constants */
+    --sidebar-width: 260px;
+    --header-height: 70px;
+    
+    /* Shadows & Transitions */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.25s ease;
+    
+    /* Border Radius */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+}
+
+/* ==========================================================================
+   1. BASE RESETS & SETUP
+   ========================================================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+    transition: color var(--transition-fast);
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* ==========================================================================
+   2. TYPOGRAPHY & HEADINGS
+   ========================================================================== */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    color: var(--text-main);
+    line-height: 1.25;
+}
+
+h1 { font-size: 2.25rem; } /* 36px */
+h2 { font-size: 1.75rem; } /* 28px */
+h3 { font-size: 1.25rem; } /* 20px */
+h4 { font-size: 1rem; }    /* 16px */
+
+p {
+    color: var(--text-muted);
+}
+
+/* ==========================================================================
+   3. REUSABLE UI COMPONENTS
+   ========================================================================== */
+
+/* --- Buttons --- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0.65rem 1.25rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    color: var(--text-light);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background-color: var(--surface-color);
+    border-color: var(--border-color);
+    color: var(--text-main);
+}
+
+.btn-secondary:hover {
+    background-color: var(--bg-color);
+    border-color: var(--text-muted);
+}
+
+.btn-danger {
+    background-color: var(--danger);
+    color: var(--text-light);
+}
+
+.btn-danger:hover {
+    background-color: hsl(350, 89%, 50%);
+    transform: translateY(-1px);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* --- Forms & Inputs --- */
+.form-group {
+    margin-bottom: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+}
+
+.form-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-main);
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background-color: var(--surface-color);
+    color: var(--text-main);
+    outline: none;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* Error State in Input */
+.form-control.is-invalid {
+    border-color: var(--danger);
+}
+
+.form-control.is-invalid:focus {
+    box-shadow: 0 0 0 3px var(--danger-light);
+}
+
+/* Validation Message */
+.invalid-feedback {
+    font-size: 0.8rem;
+    color: var(--danger);
+    display: none;
+    margin-top: 2px;
+}
+
+.form-control.is-invalid + .invalid-feedback {
+    display: block;
+}
+
+/* --- Alerts & Notifications --- */
+.alert {
+    padding: 1rem;
+    border-radius: var(--radius-sm);
+    margin-bottom: 1.25rem;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-left: 4px solid transparent;
+}
+
+.alert-danger {
+    background-color: var(--danger-light);
+    color: hsl(350, 89%, 30%);
+    border-left-color: var(--danger);
+}
+
+.alert-success {
+    background-color: var(--success-light);
+    color: hsl(142, 71%, 25%);
+    border-left-color: var(--success);
+}
+
+/* ==========================================================================
+   4. LAYOUT CONTAINERS
+   ========================================================================== */
+.card {
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.mt-3 { margin-top: 1rem; }
+.mb-3 { margin-bottom: 1rem; }

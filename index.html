@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome - Student Management System</title>
+    <!-- Relative paths ensure it loads correctly offline or on GitHub Pages -->
+    <link rel="stylesheet" href="./css/style.css">
+    <style>
+        /* Landing-page specific inline styles for clean scoping */
+        .landing-header {
+            background-color: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            height: var(--header-height);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .hero-section {
+            padding: 5rem 2rem;
+            text-align: center;
+            background: linear-gradient(135deg, hsl(221, 83%, 97%) 0%, var(--bg-color) 100%);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-bottom: 1rem;
+            letter-spacing: -0.025em;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto 2.5rem auto;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            max-width: 1000px;
+            margin: -3rem auto 0 auto;
+            padding: 0 2rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        .stat-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            text-align: center;
+            transition: transform var(--transition-normal);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-val {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .stat-lbl {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .features-section {
+            padding: 6rem 2rem 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+        }
+
+        .feature-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            transition: all var(--transition-normal);
+        }
+
+        .feature-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-md);
+        }
+
+        .feature-icon-wrapper {
+            background-color: var(--primary-light);
+            width: 50px;
+            height: 50px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            margin-bottom: 1.25rem;
+        }
+
+        .feature-card h3 {
+            margin-bottom: 0.75rem;
+            font-size: 1.2rem;
+        }
+
+        .landing-footer {
+            background-color: var(--surface-color);
+            border-top: 1px solid var(--border-color);
+            padding: 2rem;
+            text-align: center;
+            margin-top: auto;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        /* SVG icon sizing */
+        .svg-icon {
+            width: 24px;
+            height: 24px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="landing-header">
+        <div class="brand">
+            <svg class="svg-icon" viewBox="0 0 24 24">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+            <span>EduPortal</span>
+        </div>
+        <a href="./login.html" class="btn btn-primary">Login to System</a>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <h1 class="hero-title">Student Management System</h1>
+        <p class="hero-subtitle">A modern, responsive administrative tool for academic records, real-time attendance logs, and student performance tracking.</p>
+        <div class="hero-buttons">
+            <a href="./login.html" class="btn btn-primary">
+                Get Started
+                <svg class="svg-icon" viewBox="0 0 24 24" style="width: 18px; height: 18px;">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </a>
+        </div>
+    </section>
+
+    <!-- Stat Cards Overview -->
+    <section class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-val">1,240</div>
+            <div class="stat-lbl">Active Students</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-val">96.8%</div>
+            <div class="stat-lbl">Avg Attendance</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-val">A+</div>
+            <div class="stat-lbl">Highest Grade</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-val">12</div>
+            <div class="stat-lbl">Academic Branches</div>
+        </div>
+    </section>
+
+    <!-- Features Overview -->
+    <section class="features-section">
+        <div class="section-header">
+            <h2 class="section-title">Core Administration Modules</h2>
+            <p>Streamlined controls designed for academic supervisors and faculty members.</p>
+        </div>
+
+        <div class="features-grid">
+            <!-- Feature 1: Student Directory -->
+            <div class="feature-card">
+                <div class="feature-icon-wrapper">
+                    <svg class="svg-icon" viewBox="0 0 24 24">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
+                <h3>Student Directory</h3>
+                <p>Register, query, edit details, and maintain the central registry of student details and metadata.</p>
+            </div>
+
+            <!-- Feature 2: Attendance Tracking -->
+            <div class="feature-card">
+                <div class="feature-icon-wrapper">
+                    <svg class="svg-icon" viewBox="0 0 24 24">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                </div>
+                <h3>Attendance Sheets</h3>
+                <p>Log daily student status (Present, Absent, Late) with clean checklists and dynamic percentage gauges.</p>
+            </div>
+
+            <!-- Feature 3: Performance & Grades -->
+            <div class="feature-card">
+                <div class="feature-icon-wrapper">
+                    <svg class="svg-icon" viewBox="0 0 24 24">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </div>
+                <h3>Gradebook & Results</h3>
+                <p>Record, manage, and analyze marks for exams and assign letter grades based on performance metrics.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="landing-footer">
+        <p>&copy; 2026 Student Management System. Built using Pure HTML, CSS, and JS. Distributed for off-grid operations.</p>
+    </footer>
+
+</body>
+</html>
