@@ -3,29 +3,23 @@
  * STUDENT MANAGEMENT SYSTEM - RESULTS CONTROLLER (results.js)
  * ==========================================================================
  * Handles exam result recording per subject, auto-grade calculation,
- * live summary stats (average, highest, lowest), saving/loading
- * from localStorage, and toast alerts.
- *
- * localStorage Schema for results:
- *   Key: "results"
- *   Value: {
- *     "Data Structures & Algorithms": {    // subject name
- *       "101": 85,                         // roll: marks (0-100)
- *       "102": 92,
- *       ...
- *     },
- *     "Operating Systems": { ... }
- *   }
+ * live summary stats, saving to backend API & data/database.json, and toast alerts.
  */
 
 // ---------- Scope Variables ----------
 let studentsList = [];
 let resultsDB = {};
 
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. DATABASE LOAD
-    studentsList = JSON.parse(localStorage.getItem('students')) || [];
-    resultsDB = JSON.parse(localStorage.getItem('results')) || {};
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. DATABASE LOAD VIA EDU API
+    if (window.EduApi) {
+        await window.EduApi.init();
+        studentsList = await window.EduApi.getStudents();
+        resultsDB = await window.EduApi.getResults();
+    } else {
+        studentsList = JSON.parse(localStorage.getItem('students')) || [];
+        resultsDB = JSON.parse(localStorage.getItem('results')) || {};
+    }
 
     // 2. BIND EVENT LISTENERS
     const subjectSelect = document.getElementById('result-subject-select');
@@ -64,7 +58,6 @@ function getGrade(marks) {
 
 /**
  * Renders the results table for the selected subject.
- * Loads saved marks and pre-fills input fields.
  */
 function renderResultsTable() {
     const tableBody = document.getElementById('results-table-body');
@@ -86,7 +79,7 @@ function renderResultsTable() {
         return;
     }
 
-    if (studentsList.length === 0) {
+    if (!studentsList || studentsList.length === 0) {
         tableBody.innerHTML = `
             <tr>
                 <td colspan="5" class="text-center" style="color: var(--text-muted); padding: 3rem;">
@@ -134,12 +127,10 @@ function renderResultsTable() {
     const allInputs = tableBody.querySelectorAll('.marks-input');
     allInputs.forEach(input => {
         input.addEventListener('input', () => {
-            // Clamp value between 0-100
             let val = parseInt(input.value, 10);
             if (val > 100) { input.value = 100; val = 100; }
             if (val < 0) { input.value = 0; val = 0; }
 
-            // Update grade cell
             const roll = input.getAttribute('data-roll');
             const gradeCell = document.getElementById(`grade-${roll}`);
             if (gradeCell) {
@@ -154,9 +145,9 @@ function renderResultsTable() {
 }
 
 /**
- * Saves the current marks grid into localStorage.
+ * Saves the current marks grid into backend database & localStorage.
  */
-function saveResults() {
+async function saveResults() {
     const subjectSelect = document.getElementById('result-subject-select');
     const selectedSubject = subjectSelect ? subjectSelect.value : '';
 
@@ -165,12 +156,11 @@ function saveResults() {
         return;
     }
 
-    if (studentsList.length === 0) {
+    if (!studentsList || studentsList.length === 0) {
         showToast('No students registered to save results for.', true);
         return;
     }
 
-    // Collect all marks
     const marksRecord = {};
     let hasErrors = false;
 
@@ -184,7 +174,6 @@ function saveResults() {
                 marksRecord[student.roll] = val;
             }
         }
-        // Allow empty (marks not yet entered)
     });
 
     if (hasErrors) {
@@ -192,15 +181,20 @@ function saveResults() {
         return;
     }
 
-    // Save to localStorage: results[subject] = { roll: marks }
+    // Save to local cache
     resultsDB[selectedSubject] = marksRecord;
     localStorage.setItem('results', JSON.stringify(resultsDB));
+
+    // Save to Python backend & data/database.json
+    if (window.EduApi) {
+        await window.EduApi.saveResults(selectedSubject, marksRecord);
+    }
 
     showToast(`Results saved for "${selectedSubject}" successfully.`);
 }
 
 /**
- * Updates the four summary stat cards based on current marks inputs.
+ * Updates the summary stat cards based on current marks inputs.
  */
 function updateSummaryStats() {
     const totalEl = document.getElementById('res-stat-total');
@@ -210,7 +204,6 @@ function updateSummaryStats() {
 
     if (totalEl) totalEl.textContent = studentsList.length;
 
-    // Collect all filled marks
     const allInputs = document.querySelectorAll('#results-table-body .marks-input');
     const marks = [];
 
@@ -241,9 +234,7 @@ function updateSummaryStats() {
 }
 
 /**
- * Shows a temporary toast notification banner.
- * @param {string} msg - Message to display.
- * @param {boolean} isError - If true, shows error styling.
+ * Shows temporary toast notification banner.
  */
 function showToast(msg, isError = false) {
     const toast = document.getElementById('toast-notification');

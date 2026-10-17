@@ -4,14 +4,20 @@
  * ==========================================================================
  * Handles directory listing, queries, real-time filters, deletions,
  * database cascades (removing attendance/grades), and toast alerts.
+ * Fully integrated with Python backend API & data/database.json.
  */
 
 // Scope variable definitions
 let studentsList = [];
 
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. READ DATABASE
-    studentsList = JSON.parse(localStorage.getItem('students')) || [];
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. INITIALIZE API & READ DATABASE
+    if (window.EduApi) {
+        await window.EduApi.init();
+        studentsList = await window.EduApi.getStudents();
+    } else {
+        studentsList = JSON.parse(localStorage.getItem('students')) || [];
+    }
 
     // 2. PAGE INITIALIZATION ROUTING
     const tableBody = document.getElementById('students-table-body');
@@ -54,7 +60,7 @@ function populateBranchFilter(list) {
     filterEl.innerHTML = '<option value="all">All Branches</option>';
 
     // Grab unique branches
-    const uniqueBranches = [...new Set(list.map(s => s.branch.trim()))].sort();
+    const uniqueBranches = [...new Set(list.map(s => (s.branch || "").trim()))].filter(Boolean).sort();
 
     uniqueBranches.forEach(branch => {
         const option = document.createElement('option');
@@ -68,18 +74,20 @@ function populateBranchFilter(list) {
  * Filters the students list based on search terms and selected branch dropdowns.
  */
 function applyFilters() {
-    const query = document.getElementById('search-input').value.toLowerCase().trim();
-    const selectedBranch = document.getElementById('branch-filter').value;
+    const searchInput = document.getElementById('search-input');
+    const branchFilter = document.getElementById('branch-filter');
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const selectedBranch = branchFilter ? branchFilter.value : 'all';
 
     const filtered = studentsList.filter(student => {
         // Search matches Name or Roll Number
-        const nameMatch = student.name.toLowerCase().includes(query);
-        const rollMatch = student.roll.toString().includes(query);
+        const nameMatch = (student.name || "").toLowerCase().includes(query);
+        const rollMatch = (student.roll || "").toString().includes(query);
         const matchesSearch = nameMatch || rollMatch;
 
         // Branch matches dropdown selection
         const matchesBranch = selectedBranch === 'all' || 
-            student.branch.toLowerCase().trim() === selectedBranch;
+            (student.branch || "").toLowerCase().trim() === selectedBranch;
 
         return matchesSearch && matchesBranch;
     });
@@ -95,7 +103,7 @@ function renderStudentsTable(list) {
     const tableBody = document.getElementById('students-table-body');
     if (!tableBody) return;
 
-    if (list.length === 0) {
+    if (!list || list.length === 0) {
         tableBody.innerHTML = `
             <tr>
                 <td colspan="5" class="text-center" style="color: var(--text-muted); padding: 3rem;">
@@ -112,8 +120,8 @@ function renderStudentsTable(list) {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><strong>${student.roll}</strong></td>
-            <td>${student.name}</td>
-            <td><span class="badge-branch">${student.branch}</span></td>
+            <td>${escapeHtml(student.name)}</td>
+            <td><span class="badge-branch">${escapeHtml(student.branch)}</span></td>
             <td>${student.phone}</td>
             <td class="text-right">
                 <div class="action-buttons" style="justify-content: flex-end;">
@@ -130,60 +138,38 @@ function renderStudentsTable(list) {
     });
 }
 
+function escapeHtml(text) {
+    if (!text) return "";
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 /**
- * Deletes a student profile from local database with cascaded relational cleanups.
+ * Deletes a student profile from database with cascaded relational cleanups.
  * Attached to the window object to run inside dynamic HTML templates.
  * @param {number} rollNum - Roll number of student to remove.
  */
-window.deleteStudent = function(rollNum) {
+window.deleteStudent = async function(rollNum) {
     const isConfirmed = confirm(`Are you sure you want to delete student with Roll No. ${rollNum}?`);
     if (!isConfirmed) return;
 
-    // 1. Remove from Students Array
-    studentsList = studentsList.filter(s => s.roll !== rollNum);
-    localStorage.setItem('students', JSON.stringify(studentsList));
-
-    // 2. Cascade cleanup: Remove student results record from Database
-    let results = JSON.parse(localStorage.getItem('results')) || {};
-    if (Array.isArray(results)) {
-        results = results.filter(r => r.roll !== rollNum);
-    } else if (typeof results === 'object' && results !== null) {
-        Object.keys(results).forEach(subject => {
-            if (results[subject] && results[subject][rollNum] !== undefined) {
-                delete results[subject][rollNum];
-            }
-        });
+    if (window.EduApi) {
+        await window.EduApi.deleteStudent(rollNum);
+        studentsList = await window.EduApi.getStudents();
+    } else {
+        studentsList = studentsList.filter(s => s.roll !== rollNum);
+        localStorage.setItem('students', JSON.stringify(studentsList));
     }
-    localStorage.setItem('results', JSON.stringify(results));
 
-    // 3. Cascade cleanup: Remove student attendance entries from Database
-    const attendance = JSON.parse(localStorage.getItem('attendance')) || {};
-    Object.keys(attendance).forEach(date => {
-        const dailyLogs = attendance[date];
-        if (dailyLogs) {
-            Object.keys(dailyLogs).forEach(key => {
-                const val = dailyLogs[key];
-                if (typeof val === 'object' && val !== null) {
-                    // New schema: dailyLogs[subject] = { roll: status }
-                    if (val[rollNum] !== undefined) {
-                        delete val[rollNum];
-                    }
-                } else {
-                    // Legacy schema: dailyLogs[roll] = status
-                    if (key == rollNum) {
-                        delete dailyLogs[key];
-                    }
-                }
-            });
-        }
-    });
-    localStorage.setItem('attendance', JSON.stringify(attendance));
-
-    // 4. Update the View Table & Filters
+    // Update the View Table & Filters
     populateBranchFilter(studentsList);
     applyFilters();
 
-    // 5. Trigger Success Toast Banner Notification
+    // Trigger Success Toast Banner Notification
     showToast(`Student with Roll No. ${rollNum} deleted successfully.`);
 };
 
@@ -199,7 +185,6 @@ function showToast(msg) {
     toastText.textContent = msg;
     toast.style.display = 'flex';
 
-    // Disappear after 3.5 seconds
     setTimeout(() => {
         toast.style.display = 'none';
     }, 3500);
@@ -224,7 +209,7 @@ function checkQueryStringNotifications() {
  * @param {HTMLFormElement} form - The add-student form node.
  */
 function initializeAddStudentPage(form) {
-    form.addEventListener('submit', (event) => {
+    form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
         // 1. Run basic structure validation
@@ -238,14 +223,7 @@ function initializeAddStudentPage(form) {
 
         const rollVal = parseInt(rollInput.value.trim(), 10);
 
-        // 2. Perform business logic: Validate Roll Number uniqueness
-        const rollExists = studentsList.some(s => s.roll === rollVal);
-        if (rollExists) {
-            showError(rollInput, "Roll number already registered in database.");
-            return;
-        }
-
-        // 3. Assemble and save student record
+        // 2. Assemble student record
         const newStudent = {
             roll: rollVal,
             name: nameInput.value.trim(),
@@ -253,8 +231,22 @@ function initializeAddStudentPage(form) {
             phone: parseInt(phoneInput.value.trim(), 10)
         };
 
-        studentsList.push(newStudent);
-        localStorage.setItem('students', JSON.stringify(studentsList));
+        // 3. Save via EduApi (communicates with Flask backend and database.json)
+        if (window.EduApi) {
+            const res = await window.EduApi.addStudent(newStudent);
+            if (!res.success) {
+                showError(rollInput, res.message || "Roll number already registered in database.");
+                return;
+            }
+        } else {
+            const rollExists = studentsList.some(s => s.roll === rollVal);
+            if (rollExists) {
+                showError(rollInput, "Roll number already registered in database.");
+                return;
+            }
+            studentsList.push(newStudent);
+            localStorage.setItem('students', JSON.stringify(studentsList));
+        }
 
         // 4. Redirect with query param for toast triggering
         window.location.href = './students.html?success=added';
@@ -271,12 +263,18 @@ function initializeAddStudentPage(form) {
  * Parses parameters, populates prefilled tags, and saves edited records.
  * @param {HTMLFormElement} form - The edit-student form node.
  */
-function initializeEditStudentPage(form) {
+async function initializeEditStudentPage(form) {
     const urlParams = new URLSearchParams(window.location.search);
     const rollParam = parseInt(urlParams.get('roll'), 10);
 
     // 1. Lookup student record in database
-    const student = studentsList.find(s => s.roll === rollParam);
+    let student = null;
+    if (window.EduApi) {
+        student = await window.EduApi.getStudent(rollParam);
+    } else {
+        student = studentsList.find(s => s.roll === rollParam);
+    }
+
     if (!student) {
         alert("Student profile not found in directory.");
         window.location.href = './students.html';
@@ -295,19 +293,31 @@ function initializeEditStudentPage(form) {
     phoneInput.value = student.phone;
 
     // 3. Bind form submission
-    form.addEventListener('submit', (event) => {
+    form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
         // Validate details
         const isValid = validateFormInputs(form);
         if (!isValid) return;
 
-        // Apply edits to database array
-        student.name = nameInput.value.trim();
-        student.branch = branchInput.value.trim();
-        student.phone = parseInt(phoneInput.value.trim(), 10);
+        const updatedData = {
+            name: nameInput.value.trim(),
+            branch: branchInput.value.trim(),
+            phone: parseInt(phoneInput.value.trim(), 10)
+        };
 
-        localStorage.setItem('students', JSON.stringify(studentsList));
+        if (window.EduApi) {
+            const res = await window.EduApi.updateStudent(rollParam, updatedData);
+            if (!res.success) {
+                alert(res.message || "Failed to update student details.");
+                return;
+            }
+        } else {
+            student.name = updatedData.name;
+            student.branch = updatedData.branch;
+            student.phone = updatedData.phone;
+            localStorage.setItem('students', JSON.stringify(studentsList));
+        }
 
         // Redirect back with notification query flag
         window.location.href = './students.html?success=edited';

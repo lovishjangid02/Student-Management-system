@@ -2,71 +2,89 @@
  * ==========================================================================
  * STUDENT MANAGEMENT SYSTEM - DASHBOARD CONTROLLER (dashboard.js)
  * ==========================================================================
- * Reads stored records from LocalStorage, computes core metrics,
- * populates the recent student additions table, binds header user details,
- * and sets up mobile toggle drawer triggers.
+ * Reads stored records from LocalStorage and Python API, computes core metrics,
+ * populates the recent student additions table, and binds count animations.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. EXTRACT DATA FROM LOCAL STORAGE
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. INITIALIZE API & EXTRACT DATA
+    if (window.EduApi) {
+        await window.EduApi.init();
+    }
+
     const students = JSON.parse(localStorage.getItem('students')) || [];
     const attendance = JSON.parse(localStorage.getItem('attendance')) || {};
     const results = JSON.parse(localStorage.getItem('results')) || [];
 
-    // 2. COMPUTE STATISTICAL METRICS
-    const totalStudentsCount = students.length;
-    
-    // Count unique academic branches
-    const uniqueBranches = new Set(students.map(s => s.branch.trim().toLowerCase()));
-    const totalBranchesCount = uniqueBranches.size;
-    
-    // Total exam grades recorded
-    let totalGradesCount = 0;
-    if (Array.isArray(results)) {
-        totalGradesCount = results.length;
-    } else if (typeof results === 'object' && results !== null) {
-        Object.keys(results).forEach(subject => {
-            totalGradesCount += Object.keys(results[subject] || {}).length;
-        });
+    // Try fetching aggregated stats directly from backend
+    let backendStats = null;
+    if (window.EduApi && window.EduApi.isOnline) {
+        backendStats = await window.EduApi.getStats();
     }
 
-    // Calculate dynamic attendance rate percentage
-    let totalAttendanceDaysCount = 0;
-    let presentCount = 0;
+    let totalStudentsCount = 0;
+    let totalBranchesCount = 0;
+    let totalGradesCount = 0;
+    let attendanceRate = 0;
 
-    Object.keys(attendance).forEach(date => {
-        const dailyLogs = attendance[date];
-        if (dailyLogs) {
-            Object.keys(dailyLogs).forEach(key => {
-                const val = dailyLogs[key];
-                if (typeof val === 'object' && val !== null) {
-                    // New schema: dailyLogs[subject] = { roll: status }
-                    Object.keys(val).forEach(roll => {
-                        totalAttendanceDaysCount++;
-                        if (val[roll] === 'present') {
-                            presentCount++;
-                        }
-                    });
-                } else {
-                    // Legacy schema: dailyLogs[roll] = status
-                    totalAttendanceDaysCount++;
-                    if (val === 'present') {
-                        presentCount++;
-                    }
-                }
+    if (backendStats && backendStats.success) {
+        totalStudentsCount = backendStats.totalStudents;
+        totalBranchesCount = backendStats.totalBranches;
+        totalGradesCount = backendStats.totalGrades;
+        attendanceRate = backendStats.attendanceRate;
+    } else {
+        // 2. COMPUTE STATISTICAL METRICS LOCALLY
+        totalStudentsCount = students.length;
+        
+        // Count unique academic branches
+        const uniqueBranches = new Set(students.map(s => (s.branch || "").trim().toLowerCase()).filter(Boolean));
+        totalBranchesCount = uniqueBranches.size;
+        
+        // Total exam grades recorded
+        if (Array.isArray(results)) {
+            totalGradesCount = results.length;
+        } else if (typeof results === 'object' && results !== null) {
+            Object.keys(results).forEach(subject => {
+                totalGradesCount += Object.keys(results[subject] || {}).length;
             });
         }
-    });
 
-    const attendanceRate = totalAttendanceDaysCount > 0 
-        ? Math.round((presentCount / totalAttendanceDaysCount) * 100) 
-        : 0;
+        // Calculate dynamic attendance rate percentage
+        let totalAttendanceDaysCount = 0;
+        let presentCount = 0;
 
-    // 3. ANIMATE METRICS COUNT LOAD (Fulfills UI Micro-Animations)
-    animateMetricValue('stat-total-students', 0, totalStudentsCount, 1000);
-    animateMetricValue('stat-active-branches', 0, totalBranchesCount, 1000);
-    animateMetricValue('stat-grades-count', 0, totalGradesCount, 1000);
-    animateMetricPercent('stat-attendance-rate', 0, attendanceRate, 1200);
+        Object.keys(attendance).forEach(date => {
+            const dailyLogs = attendance[date];
+            if (dailyLogs) {
+                Object.keys(dailyLogs).forEach(key => {
+                    const val = dailyLogs[key];
+                    if (typeof val === 'object' && val !== null) {
+                        Object.keys(val).forEach(roll => {
+                            totalAttendanceDaysCount++;
+                            if (val[roll] === 'present') {
+                                presentCount++;
+                            }
+                        });
+                    } else {
+                        totalAttendanceDaysCount++;
+                        if (val === 'present') {
+                            presentCount++;
+                        }
+                    }
+                });
+            }
+        });
+
+        attendanceRate = totalAttendanceDaysCount > 0 
+            ? Math.round((presentCount / totalAttendanceDaysCount) * 100) 
+            : 0;
+    }
+
+    // 3. ANIMATE METRICS COUNT LOAD
+    animateMetricValue('stat-total-students', 0, totalStudentsCount, 800);
+    animateMetricValue('stat-active-branches', 0, totalBranchesCount, 800);
+    animateMetricValue('stat-grades-count', 0, totalGradesCount, 800);
+    animateMetricPercent('stat-attendance-rate', 0, attendanceRate, 1000);
 
     // 4. RENDER RECENTLY REGISTERED STUDENTS TABLE
     renderRecentStudents(students);
@@ -74,10 +92,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * Increment animates integers in elements.
- * @param {string} id - HTML node ID.
- * @param {number} start - Beginning index.
- * @param {number} end - Stopping boundary.
- * @param {number} duration - Milliseconds length.
  */
 function animateMetricValue(id, start, end, duration) {
     const obj = document.getElementById(id);
@@ -101,10 +115,6 @@ function animateMetricValue(id, start, end, duration) {
 
 /**
  * Increment animates percentages in elements.
- * @param {string} id - HTML node ID.
- * @param {number} start - Beginning index.
- * @param {number} end - Stopping boundary.
- * @param {number} duration - Milliseconds length.
  */
 function animateMetricPercent(id, start, end, duration) {
     const obj = document.getElementById(id);
@@ -127,14 +137,14 @@ function animateMetricPercent(id, start, end, duration) {
 }
 
 /**
- * Renders the top 3-4 recently registered students in the table.
+ * Renders the top recently registered students in the table.
  * @param {Array} studentsList - The array of student objects.
  */
 function renderRecentStudents(studentsList) {
     const tableBody = document.getElementById('recent-students-table-body');
     if (!tableBody) return;
 
-    if (studentsList.length === 0) {
+    if (!studentsList || studentsList.length === 0) {
         tableBody.innerHTML = `
             <tr>
                 <td colspan="4" class="text-center" style="color: var(--text-muted); padding: 2rem;">No student data available.</td>
@@ -143,7 +153,6 @@ function renderRecentStudents(studentsList) {
         return;
     }
 
-    // Clear loading row
     tableBody.innerHTML = '';
 
     // Take the last 4 students added and reverse order so newest is at the top

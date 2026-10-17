@@ -1,0 +1,73 @@
+{
+  "students": [
+    {
+      "roll": 101,
+      "name": "Aarav Sharma",
+      "branch": "Computer Science",
+      "phone": 9876543210
+    },
+    {
+      "roll": 102,
+      "name": "Diya Patel",
+      "branch": "Information Technology",
+      "phone": 9812345678
+    },
+    {
+      "roll": 103,
+      "name": "Rohan Das",
+      "branch": "Electronics",
+      "phone": 9001122334
+    },
+    {
+      "roll": 104,
+      "name": "Ananya Iyer",
+      "branch": "Mechanical Engineering",
+      "phone": 9112233445
+    }
+  ],
+  "attendance": {
+    "2026-07-14": {
+      "Data Structures & Algorithms": {
+        "101": "present",
+        "102": "present",
+        "103": "absent",
+        "104": "present"
+      },
+      "Operating Systems": {
+        "101": "present",
+        "102": "present",
+        "103": "present",
+        "104": "absent"
+      }
+    },
+    "2026-07-13": {
+      "Data Structures & Algorithms": {
+        "101": "present",
+        "102": "absent",
+        "103": "present",
+        "104": "present"
+      }
+    }
+  },
+  "results": {
+    "Data Structures & Algorithms": {
+      "101": 95,
+      "102": 74,
+      "103": 92,
+      "104": 62
+    },
+    "Operating Systems": {
+      "101": 88,
+      "102": 81,
+      "103": 75,
+      "104": 68
+    }
+  },
+  "adminProfile": {
+    "name": "Administrator",
+    "role": "Academic Administrator",
+    "department": "Computer Science & Engineering",
+    "email": "admin@gmail.com",
+    "joinDate": "October 17, 2026"
+  }
+}

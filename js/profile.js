@@ -3,12 +3,15 @@
  * STUDENT MANAGEMENT SYSTEM - PROFILE CONTROLLER (profile.js)
  * ==========================================================================
  * Handles admin profile information, password updating, local storage statistics,
- * danger zone data cleaning, and session updates.
+ * danger zone data cleaning, and session updates connected to backend JSON database.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. INITIAL LOAD
-    loadProfileInfo();
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. INITIAL LOAD VIA API
+    if (window.EduApi) {
+        await window.EduApi.init();
+    }
+    await loadProfileInfo();
 
     // 2. BIND EVENT LISTENERS
     const profileForm = document.getElementById('profile-form');
@@ -26,8 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (resetProfileBtn) {
-        resetProfileBtn.addEventListener('click', () => {
-            loadProfileInfo();
+        resetProfileBtn.addEventListener('click', async () => {
+            await loadProfileInfo();
             showToast('Form reset to saved details.');
         });
     }
@@ -44,11 +47,16 @@ document.addEventListener('DOMContentLoaded', () => {
 /**
  * Loads profile details and sets up displays, metrics, and input values.
  */
-function loadProfileInfo() {
+async function loadProfileInfo() {
     const userEmail = localStorage.getItem('loggedInUserEmail') || "admin@gmail.com";
 
     // Setup or retrieve admin info object
-    let adminProfile = JSON.parse(localStorage.getItem('adminProfile')) || {};
+    let adminProfile = {};
+    if (window.EduApi) {
+        adminProfile = await window.EduApi.getProfile();
+    } else {
+        adminProfile = JSON.parse(localStorage.getItem('adminProfile')) || {};
+    }
     
     // Default fallback values if not set
     if (!adminProfile.name) adminProfile.name = "Administrator";
@@ -90,16 +98,15 @@ function loadProfileInfo() {
 }
 
 /**
- * Saves modified Account Details to localStorage.
+ * Saves modified Account Details to backend database & localStorage.
  */
-function saveProfileDetails(e) {
+async function saveProfileDetails(e) {
     e.preventDefault();
 
     const nameInput = document.getElementById('profile-name-input');
     const roleInput = document.getElementById('profile-role-input');
     const deptInput = document.getElementById('profile-department-input');
 
-    // Run validations
     const profileForm = document.getElementById('profile-form');
     if (!validateFormInputs(profileForm)) {
         return;
@@ -112,7 +119,10 @@ function saveProfileDetails(e) {
 
     localStorage.setItem('adminProfile', JSON.stringify(adminProfile));
 
-    // Update layout elements dynamically
+    if (window.EduApi) {
+        await window.EduApi.saveProfile(adminProfile);
+    }
+
     const nameLarge = document.getElementById('profile-display-name');
     const avatarLarge = document.getElementById('profile-avatar-large');
     if (nameLarge) nameLarge.textContent = adminProfile.name;
@@ -123,9 +133,6 @@ function saveProfileDetails(e) {
 
 /**
  * Updates the user's login password.
- * (Note: In a pure client-side mockup, we don't have a rigid backend database of passwords,
- * but we check length and match. We can optionally store it in localStorage under 'adminPassword'
- * if we want a complete simulation).
  */
 function updatePassword(e) {
     e.preventDefault();
@@ -134,13 +141,12 @@ function updatePassword(e) {
     const newPass = document.getElementById('new-password');
     const confirmPass = document.getElementById('confirm-password');
 
-    // Basic fields validation
     const passwordForm = document.getElementById('password-form');
     if (!validateFormInputs(passwordForm)) {
         return;
     }
 
-    const savedPassword = localStorage.getItem('adminPassword') || 'admin123'; // Default fallback password
+    const savedPassword = localStorage.getItem('adminPassword') || 'admin123';
 
     if (currentPass.value !== savedPassword) {
         showError(currentPass, 'Incorrect current password.');
@@ -157,10 +163,8 @@ function updatePassword(e) {
         return;
     }
 
-    // Save the new password
     localStorage.setItem('adminPassword', newPass.value);
 
-    // Clear inputs
     currentPass.value = '';
     newPass.value = '';
     confirmPass.value = '';
@@ -181,24 +185,19 @@ function updateDatabaseMetrics() {
 
     if (studentCountEl) studentCountEl.textContent = students.length;
 
-    // Calculate total count of record entries
     let totalRecords = 0;
 
-    // 1. Count attendance dates & rolls marked
     Object.keys(attendance).forEach(date => {
         const subObj = attendance[date] || {};
-        // Schema handles date -> subject -> roll: status
         Object.keys(subObj).forEach(subject => {
             if (typeof subObj[subject] === 'object') {
                 totalRecords += Object.keys(subObj[subject]).length;
             } else {
-                // Backward compatibility with simple schema { roll: status }
                 totalRecords++;
             }
         });
     });
 
-    // 2. Count result marks entered
     if (Array.isArray(results)) {
         totalRecords += results.length;
     } else if (typeof results === 'object') {
@@ -212,24 +211,23 @@ function updateDatabaseMetrics() {
 
 /**
  * Calculates current LocalStorage size and displays in meter.
- * (5MB is the typical browser quota).
  */
 function updateStorageMeter() {
     let totalBytes = 0;
     for (let x in localStorage) {
         if (localStorage.hasOwnProperty(x)) {
-            totalBytes += ((localStorage[x].length + x.length) * 2); // 2 bytes per char in UTF-16
+            totalBytes += ((localStorage[x].length + x.length) * 2);
         }
     }
 
-    const quotaBytes = 5 * 1024 * 1024; // 5 MB
+    const quotaBytes = 5 * 1024 * 1024;
     const percentage = ((totalBytes / quotaBytes) * 100).toFixed(4);
 
     const fillBar = document.getElementById('storage-bar-fill');
     const label = document.getElementById('storage-label');
 
     if (fillBar) {
-        fillBar.style.width = `${Math.max(percentage * 5, 2.5)}%`; // Make it visible even if tiny
+        fillBar.style.width = `${Math.max(percentage * 5, 2.5)}%`;
     }
 
     if (label) {
@@ -241,7 +239,7 @@ function updateStorageMeter() {
 /**
  * Deletes all student, attendance, and results datasets.
  */
-function clearAllStudentData() {
+async function clearAllStudentData() {
     const confirmation = confirm("WARNING: This will permanently delete all students, attendance sheets, and academic results. This action CANNOT be undone. Are you sure you want to proceed?");
     
     if (confirmation) {
@@ -249,18 +247,25 @@ function clearAllStudentData() {
         localStorage.setItem('attendance', JSON.stringify({}));
         localStorage.setItem('results', JSON.stringify({}));
         
-        loadProfileInfo();
+        if (window.EduApi) {
+            await window.EduApi.resetDatabase('clear_students');
+        }
+
+        await loadProfileInfo();
         showToast('All student records, attendance sheets, and grades have been cleared.', true);
     }
 }
 
 /**
- * Clears all LocalStorage entries and triggers logout/reset.
+ * Clears all entries and triggers reset.
  */
-function triggerFactoryReset() {
+async function triggerFactoryReset() {
     const confirmation = confirm("CRITICAL WARNING: This will completely wipe all local configurations, passwords, and databases, restoring the application to a fresh installation. You will be logged out immediately. Do you wish to proceed?");
     
     if (confirmation) {
+        if (window.EduApi) {
+            await window.EduApi.resetDatabase('factory_reset');
+        }
         localStorage.clear();
         showToast('Factory reset complete. Redirecting...', true);
         setTimeout(() => {

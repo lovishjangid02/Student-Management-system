@@ -2,22 +2,8 @@
  * ==========================================================================
  * STUDENT MANAGEMENT SYSTEM - ATTENDANCE CONTROLLER (attendance.js)
  * ==========================================================================
- * Handles daily attendance recording, saving/loading from localStorage,
- * "Mark All" bulk actions, live summary stat counters, and toast alerts.
- *
- * localStorage Schema for attendance:
- *   Key: "attendance"
- *   Value: {
- *     "2026-07-14": {                  // date string
- *       "Data Structures & Algorithms": {  // subject name
- *         "101": "present",            // roll: status
- *         "102": "absent",
- *         ...
- *       },
- *       "Operating Systems": { ... }
- *     },
- *     ...
- *   }
+ * Handles daily attendance recording, saving/loading from backend API and
+ * localStorage, "Mark All" bulk actions, live summary stats, and toasts.
  */
 
 // ---------- Scope Variables ----------
@@ -38,10 +24,16 @@ const CS_SUBJECTS = [
     "Computer Organization"
 ];
 
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. DATABASE LOAD
-    studentsList = JSON.parse(localStorage.getItem('students')) || [];
-    attendanceDB = JSON.parse(localStorage.getItem('attendance')) || {};
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. DATABASE LOAD VIA EDU API
+    if (window.EduApi) {
+        await window.EduApi.init();
+        studentsList = await window.EduApi.getStudents();
+        attendanceDB = await window.EduApi.getAttendance();
+    } else {
+        studentsList = JSON.parse(localStorage.getItem('students')) || [];
+        attendanceDB = JSON.parse(localStorage.getItem('attendance')) || {};
+    }
 
     // 2. SET DEFAULT DATE TO TODAY
     const dateInput = document.getElementById('attendance-date');
@@ -78,7 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             updateSummaryStats();
-            // Reset dropdown back to placeholder
             markAllSelect.selectedIndex = 0;
         });
     }
@@ -88,13 +79,12 @@ document.addEventListener('DOMContentLoaded', () => {
         saveBtn.addEventListener('click', saveAttendance);
     }
 
-    // 4. INITIAL STAT UPDATE (all zeros until subject is selected)
+    // 4. INITIAL STAT UPDATE
     updateSummaryStats();
 });
 
 /**
  * Renders the attendance table for the currently selected subject + date.
- * If saved data exists for that combo, pre-selects the radio buttons.
  */
 function renderAttendanceTable() {
     const tableBody = document.getElementById('attendance-table-body');
@@ -106,7 +96,6 @@ function renderAttendanceTable() {
     const selectedSubject = subjectSelect.value;
     const selectedDate = dateInput.value;
 
-    // Validate selections
     if (!selectedSubject || !selectedDate) {
         tableBody.innerHTML = `
             <tr>
@@ -119,8 +108,7 @@ function renderAttendanceTable() {
         return;
     }
 
-    // Check for students
-    if (studentsList.length === 0) {
+    if (!studentsList || studentsList.length === 0) {
         tableBody.innerHTML = `
             <tr>
                 <td colspan="4" class="text-center" style="color: var(--text-muted); padding: 3rem;">
@@ -132,11 +120,9 @@ function renderAttendanceTable() {
         return;
     }
 
-    // Load saved data for this date + subject (if any)
     const savedForDate = attendanceDB[selectedDate] || {};
     const savedForSubject = savedForDate[selectedSubject] || {};
 
-    // Build table rows
     tableBody.innerHTML = '';
 
     studentsList.forEach(student => {
@@ -170,7 +156,6 @@ function renderAttendanceTable() {
         tableBody.appendChild(row);
     });
 
-    // Bind radio change events for live stat updates
     const allRadios = tableBody.querySelectorAll('.status-radio');
     allRadios.forEach(radio => {
         radio.addEventListener('change', updateSummaryStats);
@@ -180,9 +165,9 @@ function renderAttendanceTable() {
 }
 
 /**
- * Saves the current attendance grid into localStorage.
+ * Saves the current attendance grid into backend database & localStorage.
  */
-function saveAttendance() {
+async function saveAttendance() {
     const subjectSelect = document.getElementById('subject-select');
     const dateInput = document.getElementById('attendance-date');
 
@@ -194,12 +179,11 @@ function saveAttendance() {
         return;
     }
 
-    if (studentsList.length === 0) {
+    if (!studentsList || studentsList.length === 0) {
         showToast('No students registered to save attendance for.', true);
         return;
     }
 
-    // Collect all radio values
     const attendanceRecord = {};
     let allMarked = true;
 
@@ -217,19 +201,23 @@ function saveAttendance() {
         return;
     }
 
-    // Save to localStorage with nested structure: attendance[date][subject] = { roll: status }
+    // Save to local attendance cache
     if (!attendanceDB[selectedDate]) {
         attendanceDB[selectedDate] = {};
     }
     attendanceDB[selectedDate][selectedSubject] = attendanceRecord;
-
     localStorage.setItem('attendance', JSON.stringify(attendanceDB));
+
+    // Save to Python backend & data/database.json
+    if (window.EduApi) {
+        await window.EduApi.saveAttendance(selectedDate, selectedSubject, attendanceRecord);
+    }
 
     showToast(`Attendance saved for "${selectedSubject}" on ${selectedDate}.`);
 }
 
 /**
- * Updates the four summary stat cards at the top based on current radio selections.
+ * Updates the summary stat cards at the top based on current selections.
  */
 function updateSummaryStats() {
     const totalEl = document.getElementById('att-stat-total');
@@ -253,9 +241,7 @@ function updateSummaryStats() {
 }
 
 /**
- * Shows a temporary toast notification banner.
- * @param {string} msg - Message to display.
- * @param {boolean} isError - If true, shows error styling.
+ * Shows temporary toast notification banner.
  */
 function showToast(msg, isError = false) {
     const toast = document.getElementById('toast-notification');
@@ -264,13 +250,11 @@ function showToast(msg, isError = false) {
 
     toastText.textContent = msg;
 
-    // Toggle success/error class
     toast.classList.remove('alert-success', 'alert-danger');
     toast.classList.add(isError ? 'alert-danger' : 'alert-success');
 
     toast.style.display = 'flex';
 
-    // Auto-dismiss after 3.5 seconds
     setTimeout(() => {
         toast.style.display = 'none';
     }, 3500);
